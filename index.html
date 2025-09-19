@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conversor de Imagens</title>
+    <link rel="stylesheet" href="STYLE.CSS">
+</head>
+
+<body>
+    <h1>Conversor de Imagens: JPG, PNG, GIF, WebP, SVG, AVIF e ICO</h1>
+
+    <!--Menu para selecionar o formato do arrquivo -->
+    <select id="format">
+        <option value="jpeg">JPEG</option>
+        <option value="png">PNG</option>
+        <option value="gif">GIF</option>
+        <option value="webp">WwbP</option>
+        <option value="avif">AVIF</option>
+        <option value="ico">ICO</option>
+    </select>
+    <button onclick="convert()">Converter</button>
+
+    <!--Permite que eu arraste a imagem para o site, ele sozinho abre um segundo navegador-->
+    <div id="drop-area" style="border: 2px dashed #ccc; padding: 60px; text-align: center;">
+        Escolha a imagem ou arraste e solte a imagem aqui
+
+
+        <!--Cria um input para adicionar uma imagem-->
+        <label for="uploader" class="custom-file-upload">
+            <img src="resorces/guidance--folder.png" alt="Enviar imagem" class="upload-icon">
+        </label>
+        <input type="file" id="uploader" accept="image/*" style="display: none;">
+        <p id="file-name"></p> <!--  elemento para o nome do arquivo -->
+    </div>
+
+    <script src="SCRIPT.JS"></script>
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-seunumerodeaqui"
+        crossorigin="anonymous"></script>
+</body>
+
+</html>
