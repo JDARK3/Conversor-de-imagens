@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conversor de Imagens</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="container">
+        <h1>Conversor de Imagens</h1>
+
+        <div class="controls">
+            <select id="format">
+                <option value="jpeg">JPEG</option>
+                <option value="png">PNG</option>
+                <option value="gif">GIF</option>
+                <option value="webp">WebP</option>
+                <option value="avif">AVIF</option>
+                <option value="ico">ICO</option>
+            </select>
+            <button id="convert-btn" type="button">Converter</button>
+        </div>
+
+        <div id="drop-area">
+            <div class="upload-text">Clique no ícone 📁 ou arraste uma imagem aqui</div>
+            <label for="uploader" class="custom-file-upload">
+                <div class="upload-icon">📁 Clique para selecionar</div>
+            </label>
+            <input type="file" id="uploader" accept="image/*">
+
+            <div id="image-preview"></div>
+
+            <div id="file-info">
+                <p>Arquivo: <span id="file-name">Nenhum selecionado</span></p>
+                <p>Tipo: <span id="file-type">-</span></p>
+                <p>Tamanho: <span id="file-size">-</span></p>
+            </div>
+        </div>
+
+        <!-- Aviso especial para ICO -->
+        <div id="ico-warning" style="display:none; margin-top:10px; color:#ff9800; font-weight:bold;">
+            ⚠️ Atenção: arquivos ICO serão redimensionados para no máximo 256x256 pixels.
+        </div>
+
+        <div id="status"></div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
