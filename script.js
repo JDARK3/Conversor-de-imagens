@@ -15,9 +15,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const uploadLabel = document.querySelector('.custom-file-upload');
     const dropArea = document.getElementById('drop-area');
 
-    // Formatos suportados para conversão no cliente
-    const supportedFormats = ['jpeg', 'jpg', 'png', 'webp'];
-
     // Mostrar/ocultar aviso do ICO
     formatSelect.addEventListener('change', function() {
         if (this.value === 'ico') {
@@ -137,35 +134,31 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
+        // Verificar formatos não suportados
+        if (format === 'ico' || format === 'gif' || format === 'avif') {
+            showStatus('⚠️ Este formato requer servidor backend. Use JPEG, PNG ou WebP.', 'info');
+            return;
+        }
+
         showStatus('Convertendo imagem... Aguarde um momento.', 'loading');
         convertBtn.disabled = true;
         convertBtn.innerHTML = '<span>Convertendo...</span>';
 
         try {
-            // Verificar se o formato é suportado
-            if (!supportedFormats.includes(format)) {
-                if (format === 'ico') {
-                    showStatus('⚠️ Conversão para ICO não disponível no modo online. Use JPEG, PNG ou WebP.', 'info');
-                } else if (format === 'avif') {
-                    showStatus('⚠️ Conversão AVIF pode não funcionar em todos os navegadores. Tente WebP ou PNG.', 'info');
-                } else if (format === 'gif') {
-                    showStatus('⚠️ Conversão GIF requer servidor backend. Use JPEG, PNG ou WebP.', 'info');
-                } else {
-                    showStatus('❌ Formato não suportado para conversão no navegador.', 'error');
-                }
-                return;
-            }
-
             // Conversão no cliente (navegador)
             const convertedBlob = await convertImageClientSide(file, format);
-            const filename = `converted_${Date.now()}.${format}`;
             
-            downloadFile(convertedBlob, filename);
-            showStatus(`✅ Conversão concluída! ${filename} baixado.`, 'success');
+            if (convertedBlob) {
+                const filename = `converted_${Date.now()}.${format}`;
+                downloadFile(convertedBlob, filename);
+                showStatus(`✅ Conversão concluída! ${filename} baixado.`, 'success');
+            } else {
+                showStatus('❌ Falha na conversão da imagem.', 'error');
+            }
 
         } catch (error) {
             console.error('Erro na conversão:', error);
-            showStatus('❌ Erro na conversão: ' + error.message, 'error');
+            showStatus('❌ Erro: ' + error.message, 'error');
         } finally {
             convertBtn.disabled = false;
             convertBtn.innerHTML = '<span>Converter Agora</span>';
@@ -174,45 +167,45 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function convertImageClientSide(file, format) {
         return new Promise((resolve, reject) => {
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
             const img = new Image();
             
             img.onload = function() {
                 try {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    
+                    // Configurar canvas com as dimensões da imagem
                     canvas.width = img.width;
                     canvas.height = img.height;
                     
-                    // Limpar e desenhar a imagem
-                    ctx.clearRect(0, 0, canvas.width, canvas.height);
-                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    // Desenhar a imagem no canvas
+                    ctx.drawImage(img, 0, 0);
                     
-                    // Configurações de formato
-                    let mimeType = 'image/png';
-                    let quality = 0.92;
+                    // Configurar formato e qualidade
+                    let mimeType;
+                    let quality = 0.9;
                     
                     switch(format) {
                         case 'jpeg':
-                        case 'jpg':
                             mimeType = 'image/jpeg';
-                            quality = 0.90;
+                            break;
+                        case 'png':
+                            mimeType = 'image/png';
+                            quality = 1.0;
                             break;
                         case 'webp':
                             mimeType = 'image/webp';
-                            quality = 0.85;
                             break;
-                        case 'png':
                         default:
                             mimeType = 'image/png';
-                            quality = 1.0;
                     }
                     
-                    // Converter para blob
+                    // Converter canvas para blob
                     canvas.toBlob((blob) => {
                         if (blob) {
                             resolve(blob);
                         } else {
-                            reject(new Error('Falha na conversão da imagem'));
+                            reject(new Error('Não foi possível converter a imagem'));
                         }
                     }, mimeType, quality);
                     
@@ -221,24 +214,34 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             };
             
-            img.onerror = () => reject(new Error('Erro ao carregar imagem'));
+            img.onerror = () => reject(new Error('Erro ao carregar a imagem'));
             img.src = URL.createObjectURL(file);
         });
     }
 
     function downloadFile(blob, filename) {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        a.style.display = 'none';
-        
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        
-        // Limpar URL após download
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        try {
+            // Criar URL para o blob
+            const url = URL.createObjectURL(blob);
+            
+            // Criar link de download
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.style.display = 'none';
+            
+            // Adicionar ao documento e clicar
+            document.body.appendChild(a);
+            a.click();
+            
+            // Limpar
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+        } catch (error) {
+            console.error('Erro no download:', error);
+            throw new Error('Falha ao baixar arquivo');
+        }
     }
 
     // Efeitos visuais para drag and drop
@@ -258,5 +261,5 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     // Inicialização
-    showStatus('✨ Conversor pronto! Selecione uma imagem para converter para JPEG, PNG ou WebP.', 'info');
+    showStatus('✨ Conversor pronto! Selecione uma imagem para converter.', 'info');
 });
