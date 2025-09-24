@@ -4,21 +4,67 @@
 <head>
     <meta charset="UTF-8">
     <meta name="google-adsense-account" content="ca-pub-9563738054169243">
+    <!-- Adicione aqui o código de verificação do Google Search Console quando obtê-lo -->
+    <!-- <meta name="google-site-verification" content="SEU_CODIGO_DE_VERIFICACAO"> -->
+    
+    <!-- METADADOS ESSENCIAIS PARA SEO -->
+    <title>Conversor de Imagens Online Gratuito | JPEG, PNG, GIF, WebP, ICO, AVIF</title>
+    <meta name="description" content="🔧 Conversor de imagens online 100% gratuito. Converta entre JPEG, PNG, GIF, WebP, AVIF e ICO instantaneamente. Sem cadastro, seguro e fácil de usar!">
+    <meta name="keywords" content="conversor de imagens, converter jpeg para png, conversor online, converter gif, webp converter, criar ico, conversor gratuito, converter avif, mudar formato imagem">
+    <meta name="author" content="JDark">
+    <meta name="robots" content="index, follow">
+    
+    <!-- OPEN GRAPH (Para redes sociais) -->
+    <meta property="og:title" content="Conversor de Imagens Online Gratuito - JDark">
+    <meta property="og:description" content="Converta entre JPEG, PNG, GIF, WebP, AVIF e ICO instantaneamente. Ferramenta 100% gratuita!">
+    <meta property="og:url" content="https://conversor.jdark.com.br">
+    <meta property="og:type" content="website">
+    <meta property="og:image" content="https://conversor.jdark.com.br/og-image.jpg">
+    <!-- Crie uma imagem OG 1200x630 pixels e faça upload como og-image.jpg -->
+    
+    <!-- TWITTER CARD -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Conversor de Imagens Online Gratuito">
+    <meta name="twitter:description" content="Converta JPEG, PNG, GIF, WebP, AVIF e ICO instantaneamente">
+    
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Conversor de Imagens</title>
     <link rel="stylesheet" href="style.css">
+    
+    <!-- SCHEMA.ORG STRUCTURED DATA -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "Conversor de Imagens Online - JDark",
+      "description": "Conversor gratuito de imagens online. Suporta JPEG, PNG, GIF, WebP, AVIF e ICO.",
+      "url": "https://conversor.jdark.com.br",
+      "applicationCategory": "UtilityApplication",
+      "operatingSystem": "Any",
+      "permissions": "browser",
+      "author": {
+        "@type": "Organization",
+        "name": "JDark"
+      },
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "BRL"
+      }
+    }
+    </script>
+    
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9563738054169243"
      crossorigin="anonymous"></script>
 </head>
 
 <body>
     <div class="container">
-        <!-- ANÚNCIO NO TOPO -->
-        <div style="margin: 10px auto; text-align: center; max-width: 1200px;">
+        <!-- ANÚNCIO HEADER -->
+        <div class="ad-container">
             <ins class="adsbygoogle"
                  style="display:block"
                  data-ad-client="ca-pub-9563738054169243"
-                 data-ad-slot="6355416763"
+                 data-ad-slot=""
                  data-ad-format="auto"
                  data-full-width-responsive="true"></ins>
             <script>
@@ -26,42 +72,98 @@
             </script>
         </div>
 
-        <h1>Conversor de Imagens</h1>
+        <header>
+            <h1>Conversor de Imagens Online</h1>
+            <p class="tagline">Converta entre JPEG, PNG, GIF, WebP, AVIF e ICO - 100% Gratuito</p>
+        </header>
 
-        <div class="controls">
-            <select id="format">
-                <option value="jpeg">JPEG</option>
-                <option value="png">PNG</option>
-                <option value="gif">GIF</option>
-                <option value="webp">WebP</option>
-                <option value="avif">AVIF</option>
-                <option value="ico">ICO</option>
-            </select>
-            <button id="convert-btn" type="button">Converter</button>
-        </div>
+        <main>
+            <section class="converter-section">
+                <div class="controls">
+                    <div class="format-selector">
+                        <label for="format">Converter para:</label>
+                        <select id="format">
+                            <option value="jpeg">JPEG (alta compatibilidade)</option>
+                            <option value="png">PNG (qualidade + transparência)</option>
+                            <option value="gif">GIF (animações)</option>
+                            <option value="webp">WebP (moderno + compacto)</option>
+                            <option value="avif">AVIF (ultra compacto)</option>
+                            <option value="ico">ICO (ícones Windows)</option>
+                        </select>
+                    </div>
+                    <button id="convert-btn" type="button" class="convert-button">
+                        <span>Converter Agora</span>
+                    </button>
+                </div>
 
-        <div id="drop-area">
-            <div class="upload-text">Clique no ícone 📁 ou arraste uma imagem aqui</div>
-            <label for="uploader" class="custom-file-upload">
-                <div class="upload-icon">📁 Clique para selecionar</div>
-            </label>
-            <input type="file" id="uploader" accept="image/*">
+                <div id="drop-area">
+                    <div class="upload-text">📁 Clique para selecionar ou arraste uma imagem aqui</div>
+                    <label for="uploader" class="custom-file-upload">
+                        <div class="upload-icon">Selecionar Imagem</div>
+                    </label>
+                    <input type="file" id="uploader" accept="image/*">
 
-            <div id="image-preview"></div>
+                    <div id="image-preview"></div>
 
-            <div id="file-info">
-                <p>Arquivo: <span id="file-name">Nenhum selecionado</span></p>
-                <p>Tipo: <span id="file-type">-</span></p>
-                <p>Tamanho: <span id="file-size">-</span></p>
+                    <div id="file-info">
+                        <h3>Informações do Arquivo:</h3>
+                        <p><strong>Arquivo:</strong> <span id="file-name">Nenhum selecionado</span></p>
+                        <p><strong>Formato:</strong> <span id="file-type">-</span></p>
+                        <p><strong>Tamanho:</strong> <span id="file-size">-</span></p>
+                        <p><strong>Dimensões:</strong> <span id="file-dimensions">-</span></p>
+                    </div>
+                </div>
+
+                <!-- Aviso especial para ICO -->
+                <div id="ico-warning" class="warning-message">
+                    ⚠️ Atenção: Arquivos ICO serão otimizados para 256x256 pixels com fundo transparente.
+                </div>
+            </section>
+
+            <!-- ANÚNCIO MEIO DA PÁGINA -->
+            <div class="ad-container">
+                <ins class="adsbygoogle"
+                     style="display:block"
+                     data-ad-client="ca-pub-9563738054169243"
+                     data-ad-slot=""
+                     data-ad-format="auto"
+                     data-full-width-responsive="true"></ins>
+                <script>
+                     (adsbygoogle = window.adsbygoogle || []).push({});
+                </script>
             </div>
-        </div>
 
-        <!-- ANÚNCIO NO MEIO -->
-        <div style="margin: 20px auto; text-align: center; max-width: 1200px;">
+            <section class="info-section">
+                <h2>✨ Por que usar nosso conversor?</h2>
+                <div class="features">
+                    <div class="feature">
+                        <h3>🚀 Rápido e Eficiente</h3>
+                        <p>Conversão instantânea sem precisar de cadastro ou instalação</p>
+                    </div>
+                    <div class="feature">
+                        <h3>🔒 Seguro e Privado</h3>
+                        <p>Suas imagens são processadas localmente no navegador</p>
+                    </div>
+                    <div class="feature">
+                        <h3>💯 Totalmente Grátis</h3>
+                        <p>Sem limitações de uso ou watermark nas imagens</p>
+                    </div>
+                    <div class="feature">
+                        <h3>📱 Compatível</h3>
+                        <p>Funciona perfeitamente no computador, tablet e celular</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <div id="status" class="status-message"></div>
+
+        <!-- ANÚNCIO FOOTER -->
+        <div class="ad-container">
             <ins class="adsbygoogle"
                  style="display:block"
                  data-ad-client="ca-pub-9563738054169243"
-                 data-ad-slot="6355416763"
+                 data-ad-slot=""
                  data-ad-format="auto"
                  data-full-width-responsive="true"></ins>
             <script>
@@ -69,27 +171,16 @@
             </script>
         </div>
 
-        <!-- Aviso especial para ICO -->
-        <div id="ico-warning" style="display:none; margin-top:10px; color:#ff9800; font-weight:bold;">
-            ⚠️ Atenção: arquivos ICO serão redimensionados para no máximo 256x256 pixels.
-        </div>
-
-        <div id="status"></div>
-
-        <!-- ANÚNCIO NO RODAPÉ -->
-        <div style="margin: 20px auto; text-align: center; max-width: 1200px;">
-            <ins class="adsbygoogle"
-                 style="display:block"
-                 data-ad-client="ca-pub-9563738054169243"
-                 data-ad-slot="6355416763"
-                 data-ad-format="auto"
-                 data-full-width-responsive="true"></ins>
-            <script>
-                 (adsbygoogle = window.adsbygoogle || []).push({});
-            </script>
-        </div>
+        <footer>
+            <p>&copy; 2024 Conversor de Imagens JDark. Todos os direitos reservados.</p>
+            <p>Ferramenta online gratuita para conversão de formatos de imagem.</p>
+        </footer>
     </div>
 
     <script src="script.js"></script>
+    
+    <!-- Google Analytics (Opcional - Adicione posteriormente) -->
+    <!-- <script async src="https://www.googletagmanager.com/gtag/js?id=GA_MEASUREMENT_ID"></script> -->
 </body>
+
 </html>
