@@ -1,19 +1,28 @@
 document.addEventListener('DOMContentLoaded', function () {
-    console.log('✅ Script carregado');
+    console.log('✅ Conversor de Imagens JDark carregado');
 
     // Elementos do DOM
     const fileInput = document.getElementById('uploader');
     const fileName = document.getElementById('file-name');
     const fileType = document.getElementById('file-type');
     const fileSize = document.getElementById('file-size');
+    const fileDimensions = document.getElementById('file-dimensions');
     const convertBtn = document.getElementById('convert-btn');
     const formatSelect = document.getElementById('format');
     const statusDiv = document.getElementById('status');
     const imagePreview = document.getElementById('image-preview');
+    const icoWarning = document.getElementById('ico-warning');
     const uploadLabel = document.querySelector('.custom-file-upload');
+    const dropArea = document.getElementById('drop-area');
 
-    // Verificar se servidor está online
-    checkServerStatus();
+    // Mostrar/ocultar aviso do ICO
+    formatSelect.addEventListener('change', function() {
+        if (this.value === 'ico') {
+            icoWarning.style.display = 'block';
+        } else {
+            icoWarning.style.display = 'none';
+        }
+    });
 
     // Funções de utilidade
     function formatFileSize(bytes) {
@@ -24,8 +33,15 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function showStatus(message, type = 'info') {
-        statusDiv.textContent = message;
-        statusDiv.className = '';
+        const icons = {
+            success: '✅',
+            error: '❌',
+            loading: '⏳',
+            info: 'ℹ️'
+        };
+        
+        statusDiv.innerHTML = `${icons[type] || ''} ${message}`;
+        statusDiv.className = 'status-message';
         statusDiv.classList.add(`status-${type}`);
         statusDiv.style.display = 'block';
 
@@ -36,49 +52,75 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    async function checkServerStatus() {
-        try {
-            const response = await fetch('/health');
-            if (response.ok) {
-                console.log('✅ Servidor online');
-                showStatus('Servidor conectado!', 'success');
-            }
-        } catch (error) {
-            console.log('❌ Servidor offline');
-            showStatus('ERRO: Servidor offline. Execute: node server.js', 'error');
-        }
-    }
-
     // Event Listeners
     fileInput.addEventListener('change', handleFileSelect);
     convertBtn.addEventListener('click', convertImage);
     uploadLabel.addEventListener('click', () => fileInput.click());
 
+    // Drag and Drop
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        dropArea.addEventListener(eventName, e => e.preventDefault());
+        document.body.addEventListener(eventName, e => e.preventDefault());
+    });
+
+    dropArea.addEventListener('drop', handleFileDrop);
+
     // Handlers
     function handleFileSelect(e) {
         const file = e.target.files[0];
         if (file && file.type.startsWith('image/')) {
-            updateFileInfo(file);
-            showImagePreview(file);
-            showStatus('Imagem carregada! Clique em Converter.', 'success');
+            processSelectedFile(file);
         } else {
-            showStatus('Selecione uma imagem válida!', 'error');
+            showStatus('Por favor, selecione uma imagem válida (JPEG, PNG, GIF, etc.)', 'error');
         }
+    }
+
+    function handleFileDrop(e) {
+        const file = e.dataTransfer.files[0];
+        if (file && file.type.startsWith('image/')) {
+            fileInput.files = e.dataTransfer.files;
+            processSelectedFile(file);
+        } else {
+            showStatus('Arquivo inválido! Selecione uma imagem.', 'error');
+        }
+    }
+
+    function processSelectedFile(file) {
+        updateFileInfo(file);
+        showImagePreview(file);
+        showStatus('Imagem carregada com sucesso! Clique em "Converter Agora".', 'success');
     }
 
     function updateFileInfo(file) {
         fileName.textContent = file.name;
-        fileType.textContent = file.type;
+        fileType.textContent = file.type || 'Não identificado';
         fileSize.textContent = formatFileSize(file.size);
+        fileDimensions.textContent = 'Carregando...';
+
+        // Obter dimensões da imagem
+        const img = new Image();
+        img.onload = function() {
+            fileDimensions.textContent = `${this.width} × ${this.height} pixels`;
+        };
+        img.onerror = function() {
+            fileDimensions.textContent = 'Não disponível';
+        };
+        img.src = URL.createObjectURL(file);
     }
 
     function showImagePreview(file) {
         const reader = new FileReader();
         reader.onload = function (e) {
             imagePreview.innerHTML = `
-                <img src="${e.target.result}" alt="Preview" style="max-width: 200px; max-height: 200px; border-radius: 8px;">
-                <p style="margin-top: 10px; color: #7fdbda;">Pré-visualização:</p>
+                <div style="text-align: center;">
+                    <img src="${e.target.result}" alt="Pré-visualização" 
+                         style="max-width: 300px; max-height: 300px; border-radius: 8px; border: 2px solid #4CAF50;">
+                    <p style="margin-top: 10px; color: #7fdbda; font-weight: bold;">Pré-visualização</p>
+                </div>
             `;
+        };
+        reader.onerror = function() {
+            imagePreview.innerHTML = '<p style="color: #ff6b6b;">Erro ao carregar pré-visualização</p>';
         };
         reader.readAsDataURL(file);
     }
@@ -88,66 +130,151 @@ document.addEventListener('DOMContentLoaded', function () {
         const format = formatSelect.value;
 
         if (!file) {
-            showStatus('Selecione uma imagem primeiro!', 'error');
+            showStatus('Por favor, selecione uma imagem primeiro!', 'error');
             return;
         }
 
-        showStatus('Convertendo...', 'loading');
+        // Verificar se é ICO (que requer backend)
+        if (format === 'ico') {
+            showStatus('⚠️ Conversão para ICO requer servidor backend. Use outros formatos para conversão no navegador.', 'info');
+            return;
+        }
+
+        showStatus('Convertendo imagem... Aguarde um momento.', 'loading');
         convertBtn.disabled = true;
+        convertBtn.innerHTML = '<span>Convertendo...</span>';
 
         try {
-            const formData = new FormData();
-            formData.append('image', file);
-            formData.append('format', format);
+            // Usar conversão no cliente para formatos suportados
+            const convertedBlob = await convertImageClientSide(file, format);
+            const filename = `converted_${Date.now()}.${format}`;
+            
+            downloadFile(convertedBlob, filename);
+            showStatus(`✅ Conversão concluída! ${filename} baixado.`, 'success');
 
-            const response = await fetch('/convert', {
-                method: 'POST',
-                body: formData
-            });
-
-            if (!response.ok) {
-                throw new Error(`Erro do servidor: ${response.status}`);
-            }
-
-            const blob = await response.blob();
-            const url = URL.createObjectURL(blob);
-
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `converted.${format}`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-
-            URL.revokeObjectURL(url);
-            showStatus('✅ Download iniciado!', 'success');
+            // Track conversion (para analytics futuro)
+            trackConversion(format, file.size);
 
         } catch (error) {
-            console.error('Erro:', error);
-            showStatus('❌ Erro: ' + error.message, 'error');
+            console.error('Erro na conversão:', error);
+            showStatus('❌ Erro na conversão: ' + error.message, 'error');
         } finally {
             convertBtn.disabled = false;
+            convertBtn.innerHTML = '<span>Converter Agora</span>';
         }
     }
 
-    const dropArea = document.getElementById('drop-area');
+    function convertImageClientSide(file, format) {
+        return new Promise((resolve, reject) => {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            const img = new Image();
+            
+            img.onload = function() {
+                try {
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    
+                    // Limpar e desenhar a imagem
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    
+                    // Configurações de formato
+                    let mimeType = 'image/png';
+                    let quality = 0.92;
+                    
+                    switch(format) {
+                        case 'jpeg':
+                        case 'jpg':
+                            mimeType = 'image/jpeg';
+                            quality = 0.90;
+                            break;
+                        case 'webp':
+                            mimeType = 'image/webp';
+                            quality = 0.85;
+                            break;
+                        case 'avif':
+                            // AVIF pode não ser suportado em todos os navegadores
+                            mimeType = 'image/avif';
+                            quality = 0.80;
+                            break;
+                        case 'png':
+                        default:
+                            mimeType = 'image/png';
+                            quality = 1.0;
+                    }
+                    
+                    // Verificar se o formato é suportado
+                    if (!canvas.toBlob) {
+                        reject(new Error('Formato não suportado pelo navegador'));
+                        return;
+                    }
+                    
+                    canvas.toBlob((blob) => {
+                        if (blob) {
+                            resolve(blob);
+                        } else {
+                            reject(new Error('Falha na conversão da imagem'));
+                        }
+                    }, mimeType, quality);
+                    
+                } catch (error) {
+                    reject(error);
+                }
+            };
+            
+            img.onerror = () => reject(new Error('Erro ao carregar imagem'));
+            img.src = URL.createObjectURL(file);
+        });
+    }
 
-    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-        dropArea.addEventListener(eventName, e => e.preventDefault());
-        document.body.addEventListener(eventName, e => e.preventDefault());
-    });
+    function downloadFile(blob, filename) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.style.display = 'none';
+        
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        
+        // Limpar URL após download
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
 
-    dropArea.addEventListener('drop', e => {
-        const file = e.dataTransfer.files[0];
-        if (file && file.type.startsWith('image/')) {
-            fileInput.files = e.dataTransfer.files; // faz o input "pegar" o arquivo arrastado
-            updateFileInfo(file);
-            showImagePreview(file);
-            showStatus('Imagem carregada via arrastar!', 'success');
-        } else {
-            showStatus('Arquivo inválido! Selecione uma imagem.', 'error');
+    function trackConversion(format, fileSize) {
+        // Para uso futuro com Google Analytics
+        console.log(`Conversão realizada: ${format}, Tamanho: ${fileSize} bytes`);
+        
+        // Exemplo de integração com GA4 (descomente quando configurar)
+        /*
+        if (typeof gtag !== 'undefined') {
+            gtag('event', 'conversion', {
+                'event_category': 'image_conversion',
+                'event_label': format,
+                'value': fileSize
+            });
         }
+        */
+    }
+
+    // Efeitos visuais para drag and drop
+    dropArea.addEventListener('dragenter', () => {
+        dropArea.style.borderColor = '#4CAF50';
+        dropArea.style.backgroundColor = 'rgba(76, 175, 80, 0.1)';
     });
 
+    dropArea.addEventListener('dragleave', () => {
+        dropArea.style.borderColor = '#3a7ca5';
+        dropArea.style.backgroundColor = 'rgba(30, 58, 95, 0.3)';
+    });
 
+    dropArea.addEventListener('drop', () => {
+        dropArea.style.borderColor = '#3a7ca5';
+        dropArea.style.backgroundColor = 'rgba(30, 58, 95, 0.3)';
+    });
+
+    // Inicialização
+    showStatus('✨ Conversor pronto! Selecione uma imagem para começar.', 'info');
 });
