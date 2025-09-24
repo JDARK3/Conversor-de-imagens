@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', function () {
-    console.log('✅ Conversor de Imagens JDark carregado');
+    console.log('✅ Conversor de Imagens JDark - Modo Online');
 
     // Elementos do DOM
     const fileInput = document.getElementById('uploader');
@@ -14,6 +14,9 @@ document.addEventListener('DOMContentLoaded', function () {
     const icoWarning = document.getElementById('ico-warning');
     const uploadLabel = document.querySelector('.custom-file-upload');
     const dropArea = document.getElementById('drop-area');
+
+    // Formatos suportados para conversão no cliente
+    const supportedFormats = ['jpeg', 'jpg', 'png', 'webp'];
 
     // Mostrar/ocultar aviso do ICO
     formatSelect.addEventListener('change', function() {
@@ -134,26 +137,31 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        // Verificar se é ICO (que requer backend)
-        if (format === 'ico') {
-            showStatus('⚠️ Conversão para ICO requer servidor backend. Use outros formatos para conversão no navegador.', 'info');
-            return;
-        }
-
         showStatus('Convertendo imagem... Aguarde um momento.', 'loading');
         convertBtn.disabled = true;
         convertBtn.innerHTML = '<span>Convertendo...</span>';
 
         try {
-            // Usar conversão no cliente para formatos suportados
+            // Verificar se o formato é suportado
+            if (!supportedFormats.includes(format)) {
+                if (format === 'ico') {
+                    showStatus('⚠️ Conversão para ICO não disponível no modo online. Use JPEG, PNG ou WebP.', 'info');
+                } else if (format === 'avif') {
+                    showStatus('⚠️ Conversão AVIF pode não funcionar em todos os navegadores. Tente WebP ou PNG.', 'info');
+                } else if (format === 'gif') {
+                    showStatus('⚠️ Conversão GIF requer servidor backend. Use JPEG, PNG ou WebP.', 'info');
+                } else {
+                    showStatus('❌ Formato não suportado para conversão no navegador.', 'error');
+                }
+                return;
+            }
+
+            // Conversão no cliente (navegador)
             const convertedBlob = await convertImageClientSide(file, format);
             const filename = `converted_${Date.now()}.${format}`;
             
             downloadFile(convertedBlob, filename);
             showStatus(`✅ Conversão concluída! ${filename} baixado.`, 'success');
-
-            // Track conversion (para analytics futuro)
-            trackConversion(format, file.size);
 
         } catch (error) {
             console.error('Erro na conversão:', error);
@@ -193,23 +201,13 @@ document.addEventListener('DOMContentLoaded', function () {
                             mimeType = 'image/webp';
                             quality = 0.85;
                             break;
-                        case 'avif':
-                            // AVIF pode não ser suportado em todos os navegadores
-                            mimeType = 'image/avif';
-                            quality = 0.80;
-                            break;
                         case 'png':
                         default:
                             mimeType = 'image/png';
                             quality = 1.0;
                     }
                     
-                    // Verificar se o formato é suportado
-                    if (!canvas.toBlob) {
-                        reject(new Error('Formato não suportado pelo navegador'));
-                        return;
-                    }
-                    
+                    // Converter para blob
                     canvas.toBlob((blob) => {
                         if (blob) {
                             resolve(blob);
@@ -243,22 +241,6 @@ document.addEventListener('DOMContentLoaded', function () {
         setTimeout(() => URL.revokeObjectURL(url), 1000);
     }
 
-    function trackConversion(format, fileSize) {
-        // Para uso futuro com Google Analytics
-        console.log(`Conversão realizada: ${format}, Tamanho: ${fileSize} bytes`);
-        
-        // Exemplo de integração com GA4 (descomente quando configurar)
-        /*
-        if (typeof gtag !== 'undefined') {
-            gtag('event', 'conversion', {
-                'event_category': 'image_conversion',
-                'event_label': format,
-                'value': fileSize
-            });
-        }
-        */
-    }
-
     // Efeitos visuais para drag and drop
     dropArea.addEventListener('dragenter', () => {
         dropArea.style.borderColor = '#4CAF50';
@@ -276,5 +258,5 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     // Inicialização
-    showStatus('✨ Conversor pronto! Selecione uma imagem para começar.', 'info');
+    showStatus('✨ Conversor pronto! Selecione uma imagem para converter para JPEG, PNG ou WebP.', 'info');
 });
