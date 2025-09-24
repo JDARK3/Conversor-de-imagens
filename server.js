@@ -6,170 +6,230 @@ const path = require('path');
 const toIco = require('to-ico');
 
 const app = express();
-const port = 3000;
+const PORT = process.env.PORT || 3000;
 
-// Middleware
-app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// ==================== CONFIGURAÇÕES DE SEGURANÇA ====================
+app.use(cors({
+    origin: ['https://conversor.jdark.com.br', 'https://www.conversor.jdark.com.br'],
+    credentials: true
+}));
 
-// Servir arquivos estáticos
-app.use(express.static(__dirname));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Configuração do multer
+// ==================== SERVIR ARQUIVOS ESTÁTICOS ====================
+app.use(express.static(__dirname, {
+    etag: true,
+    lastModified: true,
+    maxAge: '1d'
+}));
+
+// ==================== CONFIGURAÇÃO MULTER ====================
 const upload = multer({
     storage: multer.memoryStorage(),
     limits: {
-        fileSize: 10 * 1024 * 1024, // 10MB máximo
-        files: 1 // apenas 1 arquivo
+        fileSize: 15 * 1024 * 1024, // 15MB
+        files: 1
     },
     fileFilter: (req, file, cb) => {
-        if (file.mimetype.startsWith('image/')) {
+        const allowedMimes = [
+            'image/jpeg', 'image/jpg', 'image/png', 
+            'image/gif', 'image/webp', 'image/avif', 'image/x-icon'
+        ];
+        
+        if (allowedMimes.includes(file.mimetype)) {
             cb(null, true);
         } else {
-            cb(new Error('Apenas imagens são permitidas!'), false);
+            cb(new Error(`Tipo de arquivo não suportado: ${file.mimetype}`), false);
         }
     }
 });
 
-// Formatos permitidos
-const ALLOWED_FORMATS = ['jpeg', 'png', 'gif', 'webp', 'avif', 'ico'];
+// ==================== FORMATOS SUPORTADOS ====================
+const ALLOWED_FORMATS = {
+    'jpeg': { mime: 'image/jpeg', quality: 90 },
+    'jpg': { mime: 'image/jpeg', quality: 90 },
+    'png': { mime: 'image/png', compression: 9 },
+    'gif': { mime: 'image/gif' },
+    'webp': { mime: 'image/webp', quality: 85 },
+    'avif': { mime: 'image/avif', quality: 80 },
+    'ico': { mime: 'image/x-icon' }
+};
 
-// Rota de conversão
-app.post('/convert', upload.single('image'), async (req, res) => {
+// ==================== VALIDAÇÃO DE IMAGEM ====================
+async function validateImage(buffer) {
     try {
-        console.log('Recebendo requisição de conversão');
+        const metadata = await sharp(buffer).metadata();
+        
+        if (metadata.width > 10000 || metadata.height > 10000) {
+            throw new Error('Imagem muito grande (máximo: 10000x10000 pixels)');
+        }
+        
+        if (metadata.size > 15 * 1024 * 1024) {
+            throw new Error('Imagem muito pesada (máximo: 15MB)');
+        }
+        
+        return metadata;
+    } catch (error) {
+        throw new Error('Imagem inválida ou corrompida');
+    }
+}
+
+// ==================== CONVERSÃO ICO PROFISSIONAL ====================
+async function convertToIco(buffer) {
+    try {
+        const sizes = [256, 128, 64, 48, 32, 16];
+        const pngBuffers = [];
+        
+        for (const size of sizes) {
+            try {
+                const resizedBuffer = await sharp(buffer)
+                    .resize(size, size, {
+                        fit: 'contain',
+                        background: { r: 0, g: 0, b: 0, alpha: 0 },
+                        kernel: sharp.kernel.lanczos3
+                    })
+                    .png({ compressionLevel: 9 })
+                    .toBuffer();
+                
+                pngBuffers.push(resizedBuffer);
+            } catch (error) {
+                console.log(`Tamanho ${size} ignorado:`, error.message);
+            }
+        }
+        
+        if (pngBuffers.length === 0) {
+            throw new Error('Não foi possível gerar o arquivo ICO');
+        }
+        
+        return await toIco(pngBuffers);
+    } catch (error) {
+        // Fallback: tamanho único
+        const fallbackBuffer = await sharp(buffer)
+            .resize(64, 64, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
+            .png()
+            .toBuffer();
+            
+        return await toIco(fallbackBuffer);
+    }
+}
+
+// ==================== ROTA DE CONVERSÃO PRINCIPAL ====================
+app.post('/api/convert', upload.single('image'), async (req, res) => {
+    try {
+        const startTime = Date.now();
+        
+        // Validar requisição
+        if (!req.file) {
+            return res.status(400).json({ 
+                success: false,
+                error: 'Nenhuma imagem enviada' 
+            });
+        }
 
         const { format } = req.body;
-        const file = req.file;
-
-        if (!file) {
-            return res.status(400).json({ error: 'Nenhuma imagem enviada!' });
+        
+        if (!format || !ALLOWED_FORMATS[format]) {
+            return res.status(400).json({ 
+                success: false,
+                error: `Formato não suportado. Use: ${Object.keys(ALLOWED_FORMATS).join(', ')}` 
+            });
         }
 
-        if (!format || !ALLOWED_FORMATS.includes(format)) {
-            return res.status(400).json({ error: 'Formato não suportado!' });
-        }
+        console.log(`🔄 Convertendo imagem para: ${format}`);
 
-        // Validar dimensões da imagem
-        const metadata = await sharp(file.buffer).metadata();
-        if (metadata.width > 5000 || metadata.height > 5000) {
-            return res.status(400).json({ error: 'Imagem muito grande! Máximo: 5000x5000 pixels' });
-        }
+        // Validar imagem
+        const metadata = await validateImage(req.file.buffer);
+        console.log(`📊 Imagem: ${metadata.width}x${metadata.height}, ${metadata.format}`);
 
-        let convertedImage;
-        let contentType;
+        let convertedBuffer;
+        const formatConfig = ALLOWED_FORMATS[format];
 
+        // CONVERSÃO ESPECÍFICA PARA CADA FORMATO
         if (format === 'ico') {
-            try {
-                // Criar múltiplos tamanhos para o ICO (melhor compatibilidade)
-                const sizes = [256, 128, 64, 48, 32, 16];
-                const pngBuffers = [];
-
-                for (const size of sizes) {
-                    try {
-                        const resizedBuffer = await sharp(file.buffer)
-                            .resize(size, size, {
-                                fit: 'contain',
-                                background: { r: 0, g: 0, b: 0, alpha: 0 },
-                                kernel: sharp.kernel.lanczos3
-                            })
-                            .png({
-                                compressionLevel: 9,
-                                adaptiveFiltering: true
-                            })
-                            .toBuffer();
-
-                        pngBuffers.push(resizedBuffer);
-                    } catch (sizeError) {
-                        console.log(`Tamanho ${size}x${size} ignorado:`, sizeError.message);
-                        // Continua com os outros tamanhos
-                    }
-                }
-
-                if (pngBuffers.length === 0) {
-                    throw new Error('Não foi possível gerar nenhum tamanho de ícone');
-                }
-
-                // Gerar ICO
-                convertedImage = await toIco(pngBuffers, {
-                    sizes: pngBuffers.map((buf, i) => sizes[i])
-                });
-
-                contentType = 'image/x-icon';
-
-            } catch (icoError) {
-                console.error('Erro na geração do ICO:', icoError);
-                // Fallback: tentar apenas um tamanho
-                const fallbackBuffer = await sharp(file.buffer)
-                    .resize(64, 64, {
-                        fit: 'contain',
-                        background: { r: 0, g: 0, b: 0, alpha: 0 }
-                    })
-                    .png()
-                    .toBuffer();
-
-                convertedImage = await toIco([fallbackBuffer]);
-                contentType = 'image/x-icon';
-            }
-        } else {
-            // Configurações para outros formatos
-            const formatOptions = {};
-
-            if (format === 'jpeg') {
-                formatOptions.quality = 90;
-                formatOptions.mozjpeg = true;
-            } else if (format === 'png') {
-                formatOptions.compressionLevel = 9;
-            } else if (format === 'webp') {
-                formatOptions.quality = 90;
-            } else if (format === 'avif') {
-                formatOptions.quality = 80;
-            }
-
-            convertedImage = await sharp(file.buffer)
-                .toFormat(format, formatOptions)
+            convertedBuffer = await convertToIco(req.file.buffer);
+        } else if (format === 'gif') {
+            convertedBuffer = await sharp(req.file.buffer)
+                .gif()
                 .toBuffer();
-
-            contentType = `image/${format}`;
+        } else {
+            const sharpInstance = sharp(req.file.buffer);
+            const options = {};
+            
+            if (formatConfig.quality) options.quality = formatConfig.quality;
+            if (formatConfig.compression) options.compressionLevel = formatConfig.compression;
+            
+            convertedBuffer = await sharpInstance
+                .toFormat(format, options)
+                .toBuffer();
         }
 
-        // Verificar se o buffer é válido
-        if (!convertedImage || !Buffer.isBuffer(convertedImage)) {
-            throw new Error('Buffer de imagem convertida é inválido');
-        }
+        // Log de performance
+        const conversionTime = Date.now() - startTime;
+        console.log(`✅ Conversão ${format} concluída em ${conversionTime}ms`);
 
-        // Configurar headers corretamente
+        // Headers de resposta
         res.set({
-            'Content-Type': contentType,
-            'Content-Length': convertedImage.length,
+            'Content-Type': formatConfig.mime,
             'Content-Disposition': `attachment; filename="converted.${format}"`,
-            'Cache-Control': 'no-cache'
+            'Content-Length': convertedBuffer.length,
+            'X-Conversion-Time': `${conversionTime}ms`,
+            'X-Image-Format': format,
+            'Cache-Control': 'public, max-age=3600'
         });
 
-        // Enviar como buffer binário
-        res.send(convertedImage);
+        res.send(convertedBuffer);
 
     } catch (error) {
-        console.error('Erro na conversão:', error);
-        res.status(500).json({
-            error: 'Erro na conversão: ' + error.message,
-            details: 'Para ICO, use imagens quadradas com fundo transparente para melhor resultado'
+        console.error('❌ Erro na conversão:', error);
+        
+        res.status(500).json({ 
+            success: false,
+            error: error.message,
+            suggestion: 'Tente com uma imagem diferente ou outro formato'
         });
     }
 });
 
-// Healthcheck
-app.get('/health', (req, res) => {
-    res.json({ status: 'online', message: 'Servidor funcionando' });
+// ==================== HEALTH CHECK ====================
+app.get('/api/health', (req, res) => {
+    res.json({
+        success: true,
+        message: 'Servidor online e funcionando',
+        timestamp: new Date().toISOString(),
+        supportedFormats: Object.keys(ALLOWED_FORMATS),
+        version: '1.0.0'
+    });
 });
 
-// Fallback
-app.get('*', (req, res) => {
+// ==================== ROTA PRINCIPAL ====================
+app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// Iniciar servidor
-app.listen(port, '0.0.0.0', () => {
-    console.log(`✅ Servidor rodando em http://localhost:${port}`);
+// ==================== MANUSEIO DE ERROS ====================
+app.use((error, req, res, next) => {
+    console.error('💥 Erro global:', error);
+    
+    if (error instanceof multer.MulterError) {
+        if (error.code === 'LIMIT_FILE_SIZE') {
+            return res.status(400).json({
+                success: false,
+                error: 'Arquivo muito grande. Máximo: 15MB'
+            });
+        }
+    }
+    
+    res.status(500).json({
+        success: false,
+        error: 'Erro interno do servidor'
+    });
+});
+
+// ==================== INICIAR SERVIDOR ====================
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`🚀 Servidor rodando na porta ${PORT}`);
+    console.log(`🌐 Acesse: http://localhost:${PORT}`);
+    console.log(`📁 Formatos suportados: ${Object.keys(ALLOWED_FORMATS).join(', ')}`);
+    console.log(`⚡ Modo: ${process.env.NODE_ENV || 'development'}`);
 });
